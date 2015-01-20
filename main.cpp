@@ -4,6 +4,10 @@
 #include <cstdlib>
 #include <time.h>
 #define PLAIN_SPEED 1
+#define COLOR_PAIR_WHITE 1
+#define COLOR_PAIR_RED 2
+#define COLOR_PAIR_GREEN 3
+#define COLOR_PAIR_MAGENTA 4
 using namespace std;
 
 const int WIDTH = 50;
@@ -20,6 +24,8 @@ public:
 	int cordCount;
 	int **cord;
 	int shootWay;
+	int vulnerable;
+	int color;
 
 	point pos;
 	list<point> shoots;
@@ -31,12 +37,14 @@ public:
 
 	void draw()
 	{
+		attron(COLOR_PAIR(color));
 		for (int i = 0; i < this->cordCount; ++i)
 		{
 			int x = start.x + this->pos.x + this->cord[i][1];
 			int y = start.y + this->pos.y + this->cord[i][0];
 			mvaddch(y, x, (char)this->cord[i][2]);
 		}
+		attroff(COLOR_PAIR(color));
 
 		this->drawShoots();
 	}
@@ -87,8 +95,9 @@ public:
 class Plain : public Item
 {
 public:
-	Plain()
+	Plain(int color)
 	{
+		this->color = color;
 		this->cordCount = 7;
 		this->shootWay = -1;
 		this->cord = new int*[this->cordCount];
@@ -100,13 +109,15 @@ public:
 		this->cord[5] = new int[3] {3, 1, 'S'};
 		this->cord[6] = new int[3] {3, -1, 'S'};
 	}
-} plain;
+} plain(COLOR_PAIR_WHITE);
 
 class Monster1 : public Item
 {
 public:
-	Monster1()
+	Monster1(int color)
 	{
+		this->color = color;
+		this->vulnerable = true;
 		this->cordCount = 4;
 		this->shootWay = -1;
 		this->cord = new int*[this->cordCount];
@@ -127,6 +138,17 @@ void init()
 	keypad(stdscr, true); // Catch special key events like F1 and arrows.
 	halfdelay(1); // Non blocking input.
 	getmaxyx(stdscr, size.y, size.x);
+
+	if(has_colors() == FALSE)
+	{	endwin();
+		printf("Your terminal does not support color\n");
+		exit(1);
+	}
+	start_color();
+	init_pair(COLOR_PAIR_WHITE, COLOR_WHITE, COLOR_BLACK);
+	init_pair(COLOR_PAIR_RED, COLOR_RED, COLOR_BLACK);
+	init_pair(COLOR_PAIR_GREEN, COLOR_GREEN, COLOR_BLACK);
+	init_pair(COLOR_PAIR_MAGENTA, COLOR_MAGENTA, COLOR_BLACK);	
 
 	start.y = 0;
 	start.x = (size.x - WIDTH) / 2;
@@ -164,27 +186,33 @@ bool generateMonsters()
 	
 	for (int i = 0; i < cnt; ++i)
 	{
-		Monster1 tmp;
+		int vulnerable = bool(rand() % 2);
+		Monster1 tmp(vulnerable ? COLOR_PAIR_GREEN : COLOR_PAIR_RED);
 		tmp.pos.y = 0;
 		tmp.pos.x = rand() % WIDTH;
+		tmp.vulnerable = vulnerable;
 		monsters.push_back(tmp);
 	}
 
 	list<Item>::iterator it;
 	list<point>::iterator its;
 	for (it = monsters.begin(); it != monsters.end(); ++it)
-	{
+	{	
 		(*it).pos.y += 1;
 		if ((*it).pos.y >= size.y)
+		{
 			it = monsters.erase(it);
-		else
+		} else {
 			for (its = plain.shoots.begin(); its != plain.shoots.end(); ++its)
 			{
 				if ((*it).pointCollision(*its))
 				{
-					it = monsters.erase(it);
+					if ((*it).vulnerable)
+						it = monsters.erase(it);
+					its = plain.shoots.erase(its);
 				}
 			}
+		}
 
 		if (plain.collision(*it))
 		{
