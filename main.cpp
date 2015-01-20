@@ -3,6 +3,7 @@
 #include <list>
 #include <cstdlib>
 #include <time.h>
+#include <unistd.h>
 #define PLAIN_SPEED 1
 #define COLOR_PAIR_WHITE 1
 #define COLOR_PAIR_RED 2
@@ -136,7 +137,7 @@ void init()
 	cbreak(); // Allow OS signals do their work and disable line buffering.
 	noecho(); // Dont output input.
 	keypad(stdscr, true); // Catch special key events like F1 and arrows.
-	halfdelay(1); // Non blocking input.
+	timeout(0); // Non blocking input.
 	getmaxyx(stdscr, size.y, size.x);
 
 	if(has_colors() == FALSE)
@@ -245,6 +246,7 @@ void game()
 			curs_set(0);
 		}
 		refresh();
+		usleep(100 * 1000);
 	}
 }
 
